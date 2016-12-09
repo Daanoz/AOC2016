@@ -25,13 +25,6 @@ function hasAbba(line) {
           _.filter(outsideMatches, detectAbba).length >= 1);
 }
 
-// input = [];
-// var str1 = 'azrzthfimarcdbk[usfjkmhedaqpfnisek]yqowqlqvlranjjvbauq[korlrbzcgrneashdrrq]fjicirnofvlrlnnkeqb[ktlfmzrqxcntvasev]urpuwoiogtcwskygxz';
-// var str2 = 'azrzthfimarcdbk[usfjkmhedaqpfnisek]yqowqlqvlranjjvbauq[korlrbzcgrneashdrrq]fjicirnofvlrlnnkeqb[ktlfmzrqxcntvasev]urpuwoiogtcwskygxz';
-// input.push(str2);
-// input.push(str1);
-// console.log(str1 === str2);
-
 var abaRegex1 = /(.)(.)\1[a-z]*(?:\[[a-z]*\][a-z]*)*\[[a-z]*\2\1\2[a-z]*\]/gi;
 var abaRegex2 = /\[[a-z]*(.)(.)\1[a-z]*\](?:[a-z]*\[[a-z]*\])*[a-z]*\2\1\2/gi;
 function hasAba(line) {
