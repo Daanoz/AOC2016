@@ -2,30 +2,20 @@ var utils = require('../utils/utils.js');
 var _ = require('../utils/lodash.js');
 
 var input = utils.readNewLineSeperatedInput();
-var input = [
-  'The first floor contains a hydrogen-compatible microchip and a lithium-compatible microchip.',
-  'The second floor contains a hydrogen generator.',
-  'The third floor contains a lithium generator.',
-  'The fourth floor contains nothing relevant.'
-];
 // var input = [
-//   'The first floor contains a lithium generator, a xet generator, a zat generator, a zat-compatible microchip, a hydrogen-compatible microchip and a hydrogen generator.',
-//   'The second floor contains a xet-compatible microchip and a lithium-compatible microchip.',
-//   'The third floor contains nothing relevant.',
+//   'The first floor contains a hydrogen-compatible microchip and a lithium-compatible microchip.',
+//   'The second floor contains a hydrogen generator.',
+//   'The third floor contains a lithium generator.',
 //   'The fourth floor contains nothing relevant.'
 // ];
-// var input = [
-//   'The first floor contains a lithium generator and a hydrogen generator.',
-//   'The second floor contains a hydrogen-compatible microchip and a lithium-compatible microchip.',
-//   'The third floor contains nothing relevant.',
-//   'The fourth floor contains nothing relevant.'
-// ];
+
 var elevatorPos = 1;
 
 var floorRegex = /The (\w*) floor contains /i;
 var elementRegex = /a (?:(\w*) generator|(\w*)-compatible microchip)/gi;
 
 var elements = [];
+var elementTypeList = [];
 var floorNumbers = [4, 3, 2, 1];
 var floors = {};
 _.forEach(floorNumbers, function(floorNumber) {
@@ -41,7 +31,7 @@ function drawFloors(floorState, currentElevatorPos) {
     });
     console.log(str);
   });
-  console.log('-'.repeat((elements.length * 3) + 5));
+  console.log('-'.repeat((elements.length * 4) + 5));
 }
 
 function getFloorNumber(floorStr) {
@@ -66,11 +56,26 @@ _.forEach(input, function(floorInput) {
       } else {
         elementKey = 'M' + elementMatch[2].substr(0,2).toUpperCase();
       }
+      if(elementTypeList.indexOf(elementKey.substr(1,2)) < 0) {
+        elementTypeList.push(elementKey.substr(1,2));
+      }
       elements.push(elementKey);
       floors[floorNumber].push(elementKey);
     }
   }
 });
+if(true /* part 2 */) {
+  floors[1].push('GEL');
+  floors[1].push('MEL');
+  floors[1].push('GDI');
+  floors[1].push('MDI');
+  elements.push('GEL');
+  elements.push('MEL');
+  elements.push('GDI');
+  elements.push('MDI');
+  elementTypeList.push('EL');
+  elementTypeList.push('DI');
+}
 elements.sort();
 console.log('Starting with: ');
 drawFloors(floors, elevatorPos);
@@ -92,7 +97,6 @@ function isCurrentStateValid(floorState) {
     });
     _.forEach(chips, function(chip) {
       if(floorElements.indexOf('G' + chip.substr(1,2)) < 0) {
-        //console.log('Floor:' + floorNumber + 'is Invalid for ' + chip);
         isValid = false;
       }
       return isValid;
@@ -101,6 +105,7 @@ function isCurrentStateValid(floorState) {
   });
   return isValid;
 }
+
 function areWeThereYet(floorState) {
   return floorState[4].length === elements.length;
 }
@@ -117,8 +122,8 @@ function generateMoveCombinations(floorElements) {
       if(firstFloorElement === secondFloorElement) {
         combinations[firstFloorElement] = [firstFloorElement];
       } else {
-        var elements = [firstFloorElement, secondFloorElement].sort();
-        combinations[elements.join(',')] = elements;
+        var elementSet = [firstFloorElement, secondFloorElement].sort();
+        combinations[elementSet.join(',')] = elementSet;
       }
     });
   });
@@ -135,67 +140,75 @@ function updateFloorState(floorState, currentFloor, modifier, floorElements) {
   return newFloorState;
 }
 
+// generates loosely matchable hash, slower than accurate one!
+function generateAbstractFloorHash(floorState) {
+  var hash = '';
+  var typeIndex = 0;
+  var typeMap = {};
+  _.forEach(floorNumbers, function(floorNumber) {
+    var floorElements = floorState[floorNumber];
+    var remappedElements = _.map(floorElements.sort(), function(floorElement) {
+      var type = floorElement.substr(1,2);
+      if(!typeMap[type]) {
+        typeMap[type] = elementTypeList[typeIndex];
+        typeIndex++;
+      }
+      return floorElement.substr(0,1) + typeMap[type];
+    });
+
+    hash += 'F' + floorNumber + ':' + (remappedElements.sort().join(','));
+  });
+  return hash;
+}
+
+// floor setup hash, faster than abstract one
 function generateFloorHash(floorState) {
   var hash = '';
   var types = [];
   _.forEach(floorNumbers, function(floorNumber) {
     var floorElements = floorState[floorNumber];
     hash += 'F' + floorNumber + ':' + (floorElements.sort().join(','));
-    // _.forEach(floorElements, function(floorElement) {
-    //   var type = floorElement.substr(1,2);
-    //   var index = types.indexOf(type);
-    //   if(index < 0) {
-    //     index = types.length;
-    //     types.push(type);
-    //   }
-    //   hash += floorElement.substr(0, 1) + '0' + index + ',';
-    // });
   });
-  // var counter = 0;
-  // var isReplacing = true;
-  // var hashRegex = /(G|M)([a-z]{2})(.*)(G|M)\2/i;
-  // while(isReplacing) {
-  //   counter++;
-  //   var beforeHash = hash;
-  //   hash = beforeHash.replace(hashRegex, '$1_'+counter+'$3$4_'+counter+'');
-  //   if(hash === beforeHash) {
-  //     isReplacing = false;
-  //   }
-  // }
   return hash;
 }
 
-function beenThereDoneThat(solution, floorState) {
-  var floorStateHash = generateFloorHash(floorState);
-  var result = !!_.find(solution, function(solutionRecord) {
+function beenThereDoneThat(solution, floorStateHash) {
+  return !!_.find(solution, function(solutionRecord) {
     return solutionRecord.hash === floorStateHash;
   });
-  return result;
 }
 
-// 999 seems already quite long, also avoids call stack size overloads
-var currentShortestPath = 75;
-var invalidStates = 0;
+// avoids call stack size overloads, rough estimated 85 should do the trick
+var currentShortestPath = 85;
+var invalidPaths = 0;
 var lastUpdate = new Date();
 
 var floorHashValids = {};
 var floorHashSteps = {};
 function makeMove(floorState, currentElevatorPos, solution) {
+  /* do we already have a finish shorter path? */
   if(solution.length > currentShortestPath) {
+    invalidPaths++;
     return false;
   }
 
-  var currentFloorHash = currentElevatorPos + generateFloorHash(floorState);
+  /* did we already pass a similar setup with less steps? */
+  var currentFloorHash = currentElevatorPos + generateAbstractFloorHash(floorState);
   if(!floorHashSteps[currentFloorHash]) {
-    floorHashSteps[currentFloorHash] = solution.length;
+    floorHashSteps[currentFloorHash] = {
+      steps: solution.length,
+      state: floorState
+    };
   } else {
-    if(floorHashSteps[currentFloorHash] < solution.length) {
-      invalidStates++;
-      //return false;
+    if(floorHashSteps[currentFloorHash].steps <= solution.length) {
+      invalidPaths++;
+      return false;
     } else {
-      floorHashSteps[currentFloorHash] = solution.length;
+      floorHashSteps[currentFloorHash].steps = solution.length;
     }
   }
+
+  /* Maybe we are already there? */
   if(areWeThereYet(floorState)) {
     if(solution.length < currentShortestPath) {
       currentShortestPath = solution.length;
@@ -203,33 +216,32 @@ function makeMove(floorState, currentElevatorPos, solution) {
     console.log('Found path! Takes ' + solution.length + ' steps');
     return true;
   }
-  // if(typeof floorHashValids[currentFloorHash] === 'boolean') {
-  //   if(!floorHashValids[currentFloorHash]) {
-  //     invalidStates++;
-  //     return false;
-  //   }
-  // } else {
-    if(!isCurrentStateValid(floorState)) {
-      floorHashValids[currentFloorHash] = false;
-      invalidStates++;
-      if(lastUpdate.getTime() + 5000 < new Date().getTime()) {
-        var hrsubend = process.hrtime(hrstart);
-        console.log(invalidStates + ' invalidStates found, ' + Math.round(invalidStates/hrsubend[0]) + ' invalid states per second.', 'Running for: ' + hrsubend[0] + 's');
-        lastUpdate = new Date();
-      }
-      // console.log('Invalid state:');
-      // drawFloors(floorState, currentElevatorPos);
+
+  /* is our hash already marked as invalid? skip the check, and fail! */
+  if(typeof floorHashValids[currentFloorHash] === 'boolean') {
+    if(!floorHashValids[currentFloorHash]) {
+      invalidPaths++;
       return false;
     }
-  //}
-  var moveIsValid = false;
-  if(!floorState[currentElevatorPos]) {
-    console.log(currentElevatorPos);
+  } else {
+    if(!isCurrentStateValid(floorState)) {
+      floorHashValids[currentFloorHash] = false;
+      invalidPaths++;
+      if(lastUpdate.getTime() + 5000 < new Date().getTime()) {
+        var hrsubend = process.hrtime(hrstart);
+        console.log(invalidPaths + ' invalidPaths found, ' + Math.round(invalidPaths/hrsubend[0]) + ' invalid paths per second.', 'Running for: ' + hrsubend[0] + 's');
+        lastUpdate = new Date();
+      }
+      return false;
+    } else {
+      floorHashValids[currentFloorHash] = true;
+    }
   }
-  var combinations = generateMoveCombinations(floorState[currentElevatorPos]);
-  var newFloorState;
-  var solutions = [];
 
+  /* lets generate all possible combinations for this floor to move */
+  var combinations = generateMoveCombinations(floorState[currentElevatorPos]);
+
+  /* if a floor is empty, why bother revisiting? */
   var minFloor = 1;
   if(floorState[1].length < 1) {
     minFloor = 2;
@@ -238,45 +250,38 @@ function makeMove(floorState, currentElevatorPos, solution) {
     }
   }
 
+  /* lets try our combinations going up and down */
+  var solutions = [];
   _.forEach(combinations, function(combination) {
-    if(currentElevatorPos < 4) {
-      newFloorState = updateFloorState(floorState, currentElevatorPos, + 1, combination);
-      if(beenThereDoneThat(solution, newFloorState)) { return; }
-      var solutionRecUp = {
-        e:currentElevatorPos + 1, direction: 'UP', elements: combination, state: newFloorState, hash: generateFloorHash(newFloorState)
-      };
-      //console.log(solution.length, currentElevatorPos, 'Moving up: ' + combination);
-      var newSolutionUp = solution.concat(solutionRecUp);
-      if(makeMove(newFloorState, currentElevatorPos + 1, newSolutionUp)) {
-        solutions.push(newSolutionUp);
-        moveIsValid = true;
+    _.forEach([-1, 1], function(floorDelta) {
+      var newElevatorPos = currentElevatorPos + floorDelta;
+      if(newElevatorPos >= minFloor && newElevatorPos <= 4) {
+        var newFloorState = updateFloorState(floorState, currentElevatorPos, floorDelta, combination);
+        var newFloorHash = generateFloorHash(newFloorState);
+        if(!beenThereDoneThat(solution, newFloorHash)) { // we have already been to this setup with this solution, lets not start an eternal loop here
+          var solutionRec = {
+            e: newElevatorPos,
+            direction: floorDelta > 1? 'UP' : 'DOWN',
+            elements: combination, state: newFloorState, hash: newFloorHash
+          };
+          var newSolution = solution.concat(solutionRec);
+          if(makeMove(newFloorState, newElevatorPos, newSolution)) {
+            solutions.push(newSolution);
+          }
+        }
       }
-    }
-  });
-  _.forEach(combinations, function(combination) {
-    if (currentElevatorPos > minFloor) {
-      newFloorState = updateFloorState(floorState, currentElevatorPos, - 1, combination);
-      if(beenThereDoneThat(solution, newFloorState)) { return; }
-      var solutionRecDown = {
-        e:currentElevatorPos - 1, direction: 'DOWN', elements: combination, state: newFloorState, hash: generateFloorHash(newFloorState)
-      };
-      //console.log(solution.length, currentElevatorPos, 'Moving down: ' + combination);
-      var newSolution = solution.concat(solutionRecDown);
-      if(makeMove(newFloorState, currentElevatorPos - 1, newSolution)) {
-        solutions.push(newSolution);
-        moveIsValid = true;
-      }
-    }
+    });
   });
 
-  if(moveIsValid) {
+  /* look up shortest solution, and add to current solution */
+  if(solutions.length > 0) {
     var shortest = _.min(solutions, 'length');
-    console.log(shortest.length, _.map(solutions, 'length'))
     for(var i = solution.length; i < shortest.length; i++) {
       solution.push(shortest[i]);
     }
+    return true;
   }
-  return moveIsValid;
+  return false;
 }
 
 var finalSolution = [];
