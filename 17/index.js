@@ -1,6 +1,6 @@
 var utils = require('../utils/utils.js');
 var _ = require('../utils/lodash.js');
-var md5 = require('../05/md5.js');
+var md5 = require('../utils/md5.js');
 
 var input = 'qljzarfv';
 var target = [3,3];
