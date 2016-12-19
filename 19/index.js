@@ -1,7 +1,7 @@
 var _ = require('../utils/lodash.js');
 
 var input = 3017957;
-//input = 5;
+//input = 20;
 var part2 = true;
 
 var elves = [];
@@ -36,6 +36,7 @@ if(!part2) {
     console.log(elves.length + ' remaining');
   }
 } else {
+  var subhrstart = process.hrtime();
   var nextIndex = 0;
   var previousLog = 0;
   while(elves.length > 1) {
@@ -47,6 +48,7 @@ if(!part2) {
       //console.log((elf.id) + ' < ' + (otherElf.id) + '('+otherElf.presents+')');
       elf.presents += otherElf.presents;
       elves.splice(otherElfIndex, 1);
+      //spliceOne(elves, otherElfIndex);
       if(otherElfIndex > nextIndex) {
         nextIndex++;
       }
@@ -57,13 +59,55 @@ if(!part2) {
       }
     }
     if((nextIndex - previousLog) > 1000) {
-      console.log(nextIndex, elves.length);
+      var subhrend = process.hrtime(subhrstart);
+      console.log(nextIndex, elves.length, '' + subhrend[0] + 's ' + subhrend[1]/1000000 + 'ms');
       previousLog = nextIndex;
+      subhrstart = process.hrtime();
     }
   }
 }
 
 
 var hrend = process.hrtime(hrstart);
-console.log(elves[0]);
+console.log('Result:', elves[0]);
 console.log('It took: ' + hrend[0] + 's ' + hrend[1]/1000000 + 'ms');
+
+
+
+// var elvesSize,forwardOffset,lastE,blackList,startPos = null;
+// //while(elves.length > 1) {
+//   // lets do the first half
+//   elvesSize = elves.length;
+//   forwardOffset = 0;
+//   lastE = 0;
+//   blackList = [];
+//   for(var e = 0; e < Math.floor(elves.length / 2); e++) {
+//     var otherSideE = Math.floor(e + (elvesSize / 2));
+//     otherSideE += forwardOffset;
+//
+//     if(otherSideE < elves.length) {
+//       blackList.push(otherSideE);
+//       forwardOffset++;
+//       elvesSize--;
+//       lastE = e;
+//     }
+//   }
+//   _.pullAt(elves, blackList);
+//   // lets do the second half
+//   elvesSize = elves.length;
+//   forwardOffset = 0;
+//   blackList = [];
+//   startPos = (lastE + 1);
+//   lastE = startPos;
+//   for(var e = startPos; e < elves.length; e++) {
+//     var otherSideE = Math.floor(e + (elvesSize / 2)) % elvesSize;
+//     otherSideE += forwardOffset;
+//     if(otherSideE < startPos) {
+//       console.log((elves[e].id) + ' < ' + (elves[otherSideE].id) + '('+elves[otherSideE].presents+')');
+//       blackList.push(otherSideE);
+//       elvesSize--;
+//       lastE = e;
+//     }
+//   }
+//   _.pullAt(elves, blackList);
+//   console.log(elves,lastE);
